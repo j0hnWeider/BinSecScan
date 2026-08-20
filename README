@@ -1,4 +1,4 @@
-#Detector de Segredos em Binários Compilados
+Detector de Segredos em Binários Compilados
 Muitos desenvolvedores acham que remover hardcoded secrets do código-fonte resolve o problema, mas esquecem que eles podem permanecer nas strings do binário compilado.
 Ferramentas como trufflehog focam em repositórios Git; poucas focam em artefatos de build de forma eficiente.
 
