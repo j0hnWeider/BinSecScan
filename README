@@ -9,3 +9,8 @@ Baixo uso de memória (streaming do arquivo, não carrega tudo na RAM).
 Detecção baseada em entropia matemática, não apenas regex, reduzindo falsos positivos.
 Integração direta como step em um Dockerfile ou GitHub Action.
 Stack: C puro, manipulação de file descriptors, algoritmos de cálculo de entropia.
+
+Desenvolvedores removem secrets do código-fonte, mas frequentemente esquecem que strings constantes são preservadas no binário.
+Ferramentas tradicionais de SAST falham aqui porque operam no código-fonte.
+Scanners de container são pesados e lentos. 
+BinSecScan foi projetado para ser leve, rápido e integrado diretamente ao pipeline de build, validando o binário antes do deploy.
