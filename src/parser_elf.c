@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h>      // <-- ESSENCIAL: define uint16_t, uint32_t, uint64_t
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
