@@ -2,8 +2,9 @@
 #
 # Escolhi rodar em tres sistemas diferentes (Linux, Windows e macOS)
 # pra garantir que o codigo compila em todas as plataformas.
-# No Windows, instalo o gcc via MinGW porque o cl (MSVC) nao vem
-# configurado por padrao no runner do GitHub.
+# No Windows, usei o MSYS2 (via setup-msys2) porque é mais rapido
+# que instalar o MinGW via Chocolatey. O MSYS2 já vem com o gcc
+# e é mantido pela propria comunidade do GitHub Actions.
 
 name: Build and Test
 
@@ -38,25 +39,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install gcc (MinGW)
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: gcc make
+
+      - name: Compile with MSYS2
+        shell: msys2 {0}
         run: |
-          choco install mingw -y
-          echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
-        shell: pwsh
-
-      - name: Verify gcc installation
-        run: gcc --version
-        shell: cmd
-
-      - name: Compile with gcc
-        run: make CC=gcc
-        shell: cmd
+          make
 
       - name: Test basic functionality
+        shell: msys2 {0}
         run: |
-          .\binsecscan.exe -t 4.5 C:\Windows\System32\notepad.exe || echo "Teste executado"
-          .\binsecscan.exe || echo "Teste de ajuda executado"
-        shell: cmd
+          ./binsecscan.exe -t 4.5 C:/Windows/System32/notepad.exe || echo "Teste executado"
+          ./binsecscan.exe || echo "Teste de ajuda executado"
 
   build-macos:
     name: Build on macOS

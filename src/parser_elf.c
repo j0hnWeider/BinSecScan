@@ -2,12 +2,57 @@
 #include "entropy.h"
 #include <stdlib.h>
 #include <string.h>
-#include <elf.h>
+#include <ctype.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <ctype.h>
+
+// ------------------------------------------------------------
+// Definições manuais das estruturas ELF
+// 
+// Minha ideia aqui é evitar depender do elf.h do sistema,
+// que pode não existir no macOS ou Windows.
+// Usei as definições padrão de 64 bits (Elf64) que são as mais comuns.
+// Se um dia precisar de suporte a 32 bits, adapto.
+// ------------------------------------------------------------
+
+#define ELFMAG0 0x7f
+#define ELFMAG1 'E'
+#define ELFMAG2 'L'
+#define ELFMAG3 'F'
+#define ELFMAG "\177ELF"
+#define SELFMAG 4
+
+typedef struct {
+    unsigned char e_ident[16];
+    uint16_t e_type;
+    uint16_t e_machine;
+    uint32_t e_version;
+    uint64_t e_entry;
+    uint64_t e_phoff;
+    uint64_t e_shoff;
+    uint32_t e_flags;
+    uint16_t e_ehsize;
+    uint16_t e_phentsize;
+    uint16_t e_phnum;
+    uint16_t e_shentsize;
+    uint16_t e_shnum;
+    uint16_t e_shstrndx;
+} Elf64_Ehdr;
+
+typedef struct {
+    uint32_t sh_name;
+    uint32_t sh_type;
+    uint64_t sh_flags;
+    uint64_t sh_addr;
+    uint64_t sh_offset;
+    uint64_t sh_size;
+    uint32_t sh_link;
+    uint32_t sh_info;
+    uint64_t sh_addralign;
+    uint64_t sh_entsize;
+} Elf64_Shdr;
 
 #define MIN_STRING_LEN 8
 
@@ -45,7 +90,10 @@ int analyze_elf(const char *filepath, double threshold) {
         return -1;
     }
 
-    if (st.st_size < sizeof(Elf64_Ehdr) || memcmp(map, ELFMAG, SELFMAG) != 0) {
+    // Valida magic number ELF
+    if (st.st_size < sizeof(Elf64_Ehdr) ||
+        map[0] != ELFMAG0 || map[1] != ELFMAG1 ||
+        map[2] != ELFMAG2 || map[3] != ELFMAG3) {
         munmap(map, st.st_size);
         close(fd);
         fprintf(stderr, "Arquivo nao e um ELF valido.\n");
@@ -56,14 +104,10 @@ int analyze_elf(const char *filepath, double threshold) {
     Elf64_Shdr *shdr = (Elf64_Shdr *)(map + ehdr->e_shoff);
     char *shstrtab = (char *)(map + shdr[ehdr->e_shstrndx].sh_offset);
 
-    // Aqui eu adicionei .rdata, .strtab e .dynstr pq eles tambem podem
-    // conter strings uteis pra analise. Sei que .strtab e .dynstr sao
-    // tabelas de simbolos, mas elas podem ter strings suspeitas tambem.
-    // Isso aqui pretendo ajustar mais pra frente, talvez adicionar
-    // uma opcao pra escolher quais secoes analisar.
     for (int i = 0; i < ehdr->e_shnum; i++) {
         char *sec_name = shstrtab + shdr[i].sh_name;
         
+        // Adicionei .rdata, .strtab e .dynstr pq eles tambem podem ter strings
         if (strcmp(sec_name, ".rodata") == 0 || 
             strcmp(sec_name, ".data") == 0 || 
             strcmp(sec_name, ".rdata") == 0 ||

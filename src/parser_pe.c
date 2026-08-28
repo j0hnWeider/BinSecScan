@@ -4,12 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h>      // <-- ESSENCIAL: define uint16_t, uint32_t, etc.
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
 
-// Estruturas basicas do formato PE
+// Estruturas do PE (mantive as mesmas)
 #pragma pack(push, 1)
 typedef struct {
     uint16_t e_magic;
@@ -120,9 +121,6 @@ int analyze_pe(const char *filepath, double threshold) {
     COFF_HEADER *coff_hdr = (COFF_HEADER *)(map + pe_offset + 4);
     SECTION_HEADER *sections = (SECTION_HEADER *)(map + pe_offset + 4 + sizeof(COFF_HEADER) + coff_hdr->SizeOfOptionalHeader);
 
-    // Adicionei .text aqui tb, pq codigo executavel pode conter strings suspeitas
-    // Sei que .text normalmente tem codigo, mas as vezes tem strings embutidas
-    // (ex: mensagens de erro, strings de debug, etc).
     for (int i = 0; i < coff_hdr->NumberOfSections; i++) {
         if (strncmp(sections[i].Name, ".rdata", 6) == 0 || 
             strncmp(sections[i].Name, ".data", 5) == 0 ||
