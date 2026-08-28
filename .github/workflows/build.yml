@@ -1,0 +1,72 @@
+# Workflow do GitHub Actions pro BinSecScan
+#
+# Escolhi rodar em tres sistemas diferentes (Linux, Windows e macOS)
+# pra garantir que o codigo compila em todas as plataformas.
+# A ideia é pegar problemas de compilacao o mais cedo possivel,
+# antes mesmo de fazer um merge na main.
+
+name: Build and Test
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-linux:
+    name: Build on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Compile
+        run: make
+
+      - name: Test basic functionality
+        run: |
+          # Testa com um binario do sistema (ls) e com ele mesmo
+          ./binsecscan -t 4.5 /bin/ls || echo "Teste com /bin/ls executado"
+          ./binsecscan -t 4.5 ./binsecscan || echo "Teste com ele mesmo executado"
+          # Se nao tiver argumento, deve mostrar a ajuda
+          ./binsecscan || echo "Teste de ajuda executado"
+
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile with MSVC
+        run: |
+          # Usa o compilador da Microsoft (cl) que ja vem no Windows runner
+          cl /W4 /Fe:binsecscan.exe *.c
+        shell: cmd
+
+      - name: Test basic functionality
+        run: |
+          # Testa com o notepad.exe (que sempre existe no Windows)
+          .\binsecscan.exe -t 4.5 C:\Windows\System32\notepad.exe || echo "Teste executado"
+          .\binsecscan.exe || echo "Teste de ajuda executado"
+        shell: cmd
+
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install make
+
+      - name: Compile
+        run: make
+
+      - name: Test basic functionality
+        run: |
+          ./binsecscan -t 4.5 /bin/ls || echo "Teste com /bin/ls executado"
+          ./binsecscan -t 4.5 ./binsecscan || echo "Teste com ele mesmo executado"
+          ./binsecscan || echo "Teste de ajuda executado"
