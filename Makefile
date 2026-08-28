@@ -1,34 +1,38 @@
 # Makefile do BinSecScan
-# 
-# Minha ideia aqui é ter um jeito simples de compilar o projeto,
-# com opcoes pra limpar os objetos e instalar o binario no sistema.
-# Preferi usar o gcc pq é o compilador mais comum em ambientes Linux,
-# mas futuramente posso adicionar suporte a clang tambem.
+
 
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -lm
 TARGET = binsecscan
+
+# Diz pro make procurar os fontes na pasta src/
+VPATH = src
+
+# Lista os arquivos fonte (sem o caminho)
 SRCS = main.c entropy.c parser_elf.c parser_pe.c
+
+# Gera os nomes dos objetos (vão ficar na raiz, mas podem ser movidos)
 OBJS = $(SRCS:.c=.o)
 
-# Alvo padrao: compila tudo
+# Alvo padrao
 all: $(TARGET)
 
-# Linkagem: junta os objetos num executavel unico
+# Linkagem: junta os objetos
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS)
 	@echo "Compilacao concluida. Execute ./$(TARGET) -h para ajuda."
 
-# Compilacao de cada .c pra .o
+# Compilacao de cada .c -> .o
+# Usa a regra implicita do make com VPATH
 %.o: %.c
-	$(CC) -c $< -o $@ $(CFLAGS)
+	$(CC) -c $(CFLAGS) $< -o $@
 
-# Limpa os arquivos gerados
+# Limpeza
 clean:
 	rm -f $(OBJS) $(TARGET)
 	@echo "Arquivos objetos e executavel removidos."
 
-# Instala o binario no sistema (precisa de sudo)
+# Instala
 install: $(TARGET)
 	cp $(TARGET) /usr/local/bin/
 	@echo "Binario instalado em /usr/local/bin/$(TARGET)"
