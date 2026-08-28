@@ -1,0 +1,76 @@
+# ========================================================
+# BinSecScan - .gitignore
+# ========================================================
+
+# -----------------------------------------------
+# Executáveis e arquivos compilados
+# -----------------------------------------------
+# O binario gerado pelo Makefile. Nao precisa subir,
+# cada um compila o seu.
+binsecscan
+binsecscan.exe
+
+# Arquivos objeto (.o) - sao temporarios durante a compilacao.
+# O Makefile ja limpa eles com 'make clean', mas é bom ignorar.
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+
+# -----------------------------------------------
+# Arquivos de teste e cobertura
+# -----------------------------------------------
+# Os testes compilados ficam aqui. Nao precisam subir.
+tests/test_entropy
+tests/test_*.log
+
+# -----------------------------------------------
+# Arquivos temporarios do sistema
+# -----------------------------------------------
+# Backup files que editores criam.
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# -----------------------------------------------
+# Arquivos de IDE
+# -----------------------------------------------
+# VsCode
+.vscode/
+.idea/
+
+# CLion / JetBrains
+*.iml
+.idea/
+
+# -----------------------------------------------
+# Sistemas operacionais
+# -----------------------------------------------
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# -----------------------------------------------
+# Logs e relatórios
+# -----------------------------------------------
+*.log
+*.out
+
+# -----------------------------------------------
+# Dependências (caso use alguma no futuro)
+# -----------------------------------------------
+# Se adicionar libs externas, ignore as pastas delas
+libs/
+deps/
+vendor/
