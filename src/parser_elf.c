@@ -2,13 +2,13 @@
 #include "entropy.h"
 #include <stdlib.h>
 #include <string.h>
-#include <elf.h> // Cabeçalhos padrão do Linux para ELF
+#include <elf.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <ctype.h>
 
-// Tamanho mínimo de string candidata para análise
 #define MIN_STRING_LEN 8
 
 static void check_buffer_entropy(const unsigned char *buf, size_t len, double threshold, const char *context) {
@@ -17,8 +17,7 @@ static void check_buffer_entropy(const unsigned char *buf, size_t len, double th
     double ent = calculate_shannon_entropy(buf, len);
     if (ent > threshold) {
         printf("[ALERTA] Alta entropia detectada (%.2f) em %s\n", ent, context);
-        // Imprime os primeiros bytes para contexto (sanitizado para não quebrar terminal)
-        printf("  Conteúdo: ");
+        printf("  Conteudo: ");
         for (size_t i = 0; i < len && i < 32; i++) {
             if (isprint(buf[i])) putchar(buf[i]);
             else putchar('.');
@@ -46,11 +45,10 @@ int analyze_elf(const char *filepath, double threshold) {
         return -1;
     }
 
-    // Validação básica de magic number ELF
     if (st.st_size < sizeof(Elf64_Ehdr) || memcmp(map, ELFMAG, SELFMAG) != 0) {
         munmap(map, st.st_size);
         close(fd);
-        fprintf(stderr, "Arquivo não é um ELF válido.\n");
+        fprintf(stderr, "Arquivo nao e um ELF valido.\n");
         return -1;
     }
 
@@ -58,16 +56,23 @@ int analyze_elf(const char *filepath, double threshold) {
     Elf64_Shdr *shdr = (Elf64_Shdr *)(map + ehdr->e_shoff);
     char *shstrtab = (char *)(map + shdr[ehdr->e_shstrndx].sh_offset);
 
-    // Itera sobre as seções procurando por .rodata, .data, .strings
+    // Aqui eu adicionei .rdata, .strtab e .dynstr pq eles tambem podem
+    // conter strings uteis pra analise. Sei que .strtab e .dynstr sao
+    // tabelas de simbolos, mas elas podem ter strings suspeitas tambem.
+    // Isso aqui pretendo ajustar mais pra frente, talvez adicionar
+    // uma opcao pra escolher quais secoes analisar.
     for (int i = 0; i < ehdr->e_shnum; i++) {
         char *sec_name = shstrtab + shdr[i].sh_name;
         
-        // Foca em seções que geralmente contêm strings constantes
-        if (strcmp(sec_name, ".rodata") == 0 || strcmp(sec_name, ".data") == 0) {
+        if (strcmp(sec_name, ".rodata") == 0 || 
+            strcmp(sec_name, ".data") == 0 || 
+            strcmp(sec_name, ".rdata") == 0 ||
+            strcmp(sec_name, ".strtab") == 0 ||
+            strcmp(sec_name, ".dynstr") == 0) {
+            
             unsigned char *sec_data = map + shdr[i].sh_offset;
             size_t sec_size = shdr[i].sh_size;
             
-            // Varre a seção procurando por sequências de bytes imprimíveis
             size_t start = 0;
             for (size_t j = 0; j < sec_size; j++) {
                 if (isprint(sec_data[j]) && sec_data[j] != ' ') {
@@ -84,7 +89,6 @@ int analyze_elf(const char *filepath, double threshold) {
                     }
                 }
             }
-            // Caso a seção termine com uma string válida
             if (start != 0) {
                 size_t len = sec_size - start;
                 if (len >= MIN_STRING_LEN) {

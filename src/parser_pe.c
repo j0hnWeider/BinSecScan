@@ -9,28 +9,28 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-// Estruturas básicas do formato PE (simplificadas para portabilidade sem winapi)
+// Estruturas basicas do formato PE
 #pragma pack(push, 1)
 typedef struct {
-    uint16_t e_magic;      // Magic number
-    uint16_t e_cblp;       // Bytes on last page of file
-    uint16_t e_cp;         // Pages in file
-    uint16_t e_crlc;       // Relocations
-    uint16_t e_cparhdr;    // Size of header in paragraphs
-    uint16_t e_minalloc;   // Minimum extra paragraphs needed
-    uint16_t e_maxalloc;   // Maximum extra paragraphs needed
-    uint16_t e_ss;         // Initial (relative) SS value
-    uint16_t e_sp;         // Initial SP value
-    uint16_t e_csum;       // Checksum
-    uint16_t e_ip;         // Initial IP value
-    uint16_t e_cs;         // Initial (relative) CS value
-    uint16_t e_lfarlc;     // File address of relocation table
-    uint16_t e_ovno;       // Overlay number
-    uint16_t e_res[4];     // Reserved words
-    uint16_t e_oemid;      // OEM identifier
-    uint16_t e_oeminfo;    // OEM information
-    uint16_t e_res2[10];   // Reserved words
-    int32_t  e_lfanew;     // File address of new exe header
+    uint16_t e_magic;
+    uint16_t e_cblp;
+    uint16_t e_cp;
+    uint16_t e_crlc;
+    uint16_t e_cparhdr;
+    uint16_t e_minalloc;
+    uint16_t e_maxalloc;
+    uint16_t e_ss;
+    uint16_t e_sp;
+    uint16_t e_csum;
+    uint16_t e_ip;
+    uint16_t e_cs;
+    uint16_t e_lfarlc;
+    uint16_t e_ovno;
+    uint16_t e_res[4];
+    uint16_t e_oemid;
+    uint16_t e_oeminfo;
+    uint16_t e_res2[10];
+    int32_t  e_lfanew;
 } DOS_HEADER;
 
 typedef struct {
@@ -68,7 +68,7 @@ static void check_pe_buffer(const unsigned char *buf, size_t len, double thresho
     double ent = calculate_shannon_entropy(buf, len);
     if (ent > threshold) {
         printf("[ALERTA] Alta entropia detectada (%.2f) em PE:%s:offset_%u\n", ent, sec_name, offset);
-        printf("  Conteúdo: ");
+        printf("  Conteudo: ");
         for (size_t i = 0; i < len && i < 32; i++) {
             if (isprint(buf[i])) putchar(buf[i]);
             else putchar('.');
@@ -103,10 +103,10 @@ int analyze_pe(const char *filepath, double threshold) {
     }
 
     DOS_HEADER *dos_hdr = (DOS_HEADER *)map;
-    if (dos_hdr->e_magic != 0x5A4D) { // "MZ"
+    if (dos_hdr->e_magic != 0x5A4D) {
         munmap(map, st.st_size);
         close(fd);
-        fprintf(stderr, "Arquivo não é um PE válido (Magic MZ ausente).\n");
+        fprintf(stderr, "Arquivo nao e um PE valido (Magic MZ ausente).\n");
         return -1;
     }
 
@@ -117,13 +117,17 @@ int analyze_pe(const char *filepath, double threshold) {
         return -1;
     }
 
-    // Pula assinatura PE (4 bytes) após e_lfanew
     COFF_HEADER *coff_hdr = (COFF_HEADER *)(map + pe_offset + 4);
     SECTION_HEADER *sections = (SECTION_HEADER *)(map + pe_offset + 4 + sizeof(COFF_HEADER) + coff_hdr->SizeOfOptionalHeader);
 
+    // Adicionei .text aqui tb, pq codigo executavel pode conter strings suspeitas
+    // Sei que .text normalmente tem codigo, mas as vezes tem strings embutidas
+    // (ex: mensagens de erro, strings de debug, etc).
     for (int i = 0; i < coff_hdr->NumberOfSections; i++) {
-        // Foca em .rdata (read-only data, onde strings constantes ficam) e .data
-        if (strncmp(sections[i].Name, ".rdata", 6) == 0 || strncmp(sections[i].Name, ".data", 5) == 0) {
+        if (strncmp(sections[i].Name, ".rdata", 6) == 0 || 
+            strncmp(sections[i].Name, ".data", 5) == 0 ||
+            strncmp(sections[i].Name, ".text", 5) == 0) {
+            
             uint32_t raw_ptr = sections[i].PointerToRawData;
             uint32_t raw_size = sections[i].SizeOfRawData;
 
@@ -131,7 +135,6 @@ int analyze_pe(const char *filepath, double threshold) {
 
             unsigned char *sec_data = map + raw_ptr;
             
-            // Varredura simples de strings imprimíveis
             size_t start = 0;
             for (uint32_t j = 0; j < raw_size; j++) {
                 if (isprint(sec_data[j]) && sec_data[j] != ' ') {
